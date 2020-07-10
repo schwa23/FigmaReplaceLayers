@@ -15,5 +15,5 @@ If your source layer is a component, it will replace the target layer with an in
 
 The thumbnail that's generated when you set the source layer also acts as a quick export -- just drag it to your desktop to get a 2x resolution PNG of the source layer.
 
-TODO
+#### TODO
 Be smarter if you attempt to replace a master component. 
