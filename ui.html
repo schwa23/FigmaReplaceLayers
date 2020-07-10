@@ -23,7 +23,7 @@
         let blob = new Blob([imgData], { type: 'image/png'});
         let bloburl = URL.createObjectURL(blob);
         // preview.style.backgroundImage = `url(${bloburl}`;
-        console.log("preview rendered" + Date.now());
+        // console.log("preview rendered" + Date.now());
         
         preview.style.opacity= 0.7;
         preview.src = bloburl;
@@ -52,14 +52,14 @@
         
         var imgData = message.bytes;
         var aspect = message.aspect;
-        console.log(aspect);
+        // console.log(aspect);
         var img = document.getElementById("dragimage");
         let blob = new Blob([imgData], { type: 'image/png' });
 
         let tempFile = new File([imgData], "image.png", { type: 'image/png' });
-        console.log(tempFile);
+        // console.log(tempFile);
         let bloburl = URL.createObjectURL(tempFile);
-        console.log(bloburl);
+        // console.log(bloburl);
         let link = document.getElementById("previewdownload");
             link.href = bloburl;
             link.download = "filename";
@@ -89,7 +89,7 @@
             img.style.height = "126px"
             img.style.width = `${(126 * aspect)}px`;
         }
-        console.log("large Image rendered" + Date.now());
+        // console.log("large Image rendered" + Date.now());
 
         var preview = document.getElementById("thumbnailimage");
         preview.style.opacity= 0.0;
@@ -99,7 +99,7 @@
     }
 
     function confirmDialog(message) {
-        console.log("Running confirm Dialog");
+        // console.log("Running confirm Dialog");
         alert("hey");
         var confirmation =  window.confirm("Are you sure?");
         parent.postMessage({ pluginMessage: { name: "confirmWarning", result: confirmation } }, '*');
@@ -171,18 +171,13 @@
        e.dataTransfer.setDragImage(document.getElementById("dragimage"), 63,63 )
        e.dataTransfer.dropEffect = "copy";
        e.dataTransfer.effectAllowed = "copy";
-    
-        console.log("dragstarted");
-       
 
     })
     document.querySelectorAll('button').forEach(item => {
         item.addEventListener('click', e => {
-            // console.log(e.target.className);
+
             parent.postMessage({ pluginMessage: { name: e.target.className } }, '*');
         });
     });
-    document.addEventListener('copy', e => {
-        console.log(e);
-    })
+   
 </script>
