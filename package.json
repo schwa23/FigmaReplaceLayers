@@ -1,7 +1,7 @@
 {
   "name": "replace_layers",
   "version": "1.0.0",
-  "description": "Replace Layers [Beta] is meant to make it",
+  "description": "Replace Layers [Beta] allows you to select one or more layers (aka nodes) and replace them with an existing layer in your Figma document.",
   "main": "code.js",
 
   "scripts": {
