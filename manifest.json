@@ -1,0 +1,13 @@
+{
+  "name": "Replace Layers",
+  "id": "854164523358810429",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "menu": [
+    {"name": "Show Panel", "command": "presentUI"},
+    {"name": "Set Source Layer", "command": "setLayer"},
+    {"name": "Replace Layer(s)", "command": "replaceLayers"}
+  
+  ]
+}

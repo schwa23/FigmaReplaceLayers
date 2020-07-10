@@ -1,0 +1,188 @@
+<script>
+    parent.postMessage({ pluginMessage: 'anything here' }, '*');
+
+    onmessage = (event) => {
+        //   console.log("got this from the plugin code", event.data.pluginMessage)
+        if (event.data.pluginMessage.type === 'preview') {
+            preview(event.data.pluginMessage);
+        }
+        if (event.data.pluginMessage.type === 'large_image') {
+            draw(event.data.pluginMessage);
+        }
+
+        if (event.data.pluginMessage.type === 'showConfirmDialog') {
+            confirmDialog(event.data.pluginMessage);
+        }
+
+    }
+
+    function preview(message) {
+        var imgData = message.bytes;
+        var aspect = message.aspect;
+        var preview = document.getElementById("thumbnailimage");
+        let blob = new Blob([imgData], { type: 'image/png'});
+        let bloburl = URL.createObjectURL(blob);
+        // preview.style.backgroundImage = `url(${bloburl}`;
+        console.log("preview rendered" + Date.now());
+        
+        preview.style.opacity= 0.7;
+        preview.src = bloburl;
+        if (aspect >= 1) {
+            preview.style.height = `${(126 / aspect)}px`;
+            preview.style.marginTop = `${(100 - (100 / aspect)) / 2}`;
+            preview.style.width = "126px"
+        } else {
+            preview.style.height = "126px"
+            preview.style.width = `${(126 * aspect)}px`;
+        }
+
+
+        let dragimage = document.getElementById("dragimage")
+        dragimage.style.opacity = 0.0;
+        // dragimage.src = "";
+
+        // var img = document.getElementById("dragimage").src = "";
+        
+        setTimeout(function() {
+        parent.postMessage({ pluginMessage: { name: "getLargeImage" } }, '*');
+        }, 100);
+    }
+
+    function draw(message) {
+        
+        var imgData = message.bytes;
+        var aspect = message.aspect;
+        console.log(aspect);
+        var img = document.getElementById("dragimage");
+        let blob = new Blob([imgData], { type: 'image/png' });
+
+        let tempFile = new File([imgData], "image.png", { type: 'image/png' });
+        console.log(tempFile);
+        let bloburl = URL.createObjectURL(tempFile);
+        console.log(bloburl);
+        let link = document.getElementById("previewdownload");
+            link.href = bloburl;
+            link.download = "filename";
+
+        img.src = bloburl;
+
+//         let reader = new FileReader();
+//         reader.readAsDataURL(tempFile);
+//         // let bloburl = URL.createObjectURL(blob);
+//         reader.onload = function() {
+//             let dataUrl = reader.result;
+//             // dataUrl.replace('base64,', 'name=filename;base64,');
+//             img.src = dataUrl;
+//             img.download = "filename";
+//             let link = document.getElementById("previewdownload");
+//             link.href = dataUrl;
+//             link.download = "filename";
+// };        
+
+       
+
+        if (aspect >= 1) {
+            img.style.height = `${(126 / aspect)}px`;
+            img.style.marginTop = `${(100 - (100 / aspect)) / 2}`;
+            img.style.width = "126px"
+        } else {
+            img.style.height = "126px"
+            img.style.width = `${(126 * aspect)}px`;
+        }
+        console.log("large Image rendered" + Date.now());
+
+        var preview = document.getElementById("thumbnailimage");
+        preview.style.opacity= 0.0;
+        // preview.style.backgroundImage = "";
+        dragimage.style.opacity = 1.0;
+
+    }
+
+    function confirmDialog(message) {
+        console.log("Running confirm Dialog");
+        alert("hey");
+        var confirmation =  window.confirm("Are you sure?");
+        parent.postMessage({ pluginMessage: { name: "confirmWarning", result: confirmation } }, '*');
+
+    }
+</script>
+
+<style>
+    .shortcuts {
+        width: 126px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .shortcuts button {
+        text-align: center;
+        display: block;
+        flex-grow: 1;
+        margin-bottom: 4px;
+    }
+
+    .shortcuts a:hover {
+        background-color: #DBDBDB
+    }
+
+    #previewThumbnail {
+        opacity: 1;
+        text-align: center;
+        overflow: hidden;
+        display: block;
+        width: 126px;
+        height: 126px;
+        background-repeat: no-repeat;
+        background-size: contain;
+        background-position: 50% 50%;
+        transition-property: opacity;
+        transition-duration: .2s;
+    }
+
+    #dragimage, #thumbnailimage {
+        opacity: 0;
+        transition-property: opacity;
+        transition-duration: .2s;
+        position: absolute;
+        left: 12;
+    } 
+
+    #thumbnailimage {
+        z-index: 0;
+    }
+
+    #dragimage {
+        z-index: 1;
+    }
+</style>
+<link rel="stylesheet" href="https://static.figma.com/api/figma-extension-api-0.0.1.css">
+<div id="previewThumbnail" ><img draggable="true" id="dragimage" /><img draggable="false" id="thumbnailimage"/></div>
+<a id='previewdownload'></a>
+
+<p class="shortcuts">
+    <button class="setLayer">Set Layer</button>
+    <button class="replaceLayers">Replace Layers</button>
+</p>
+
+
+
+<script>
+    document.getElementById("dragimage").addEventListener('dragstart', e => {
+       e.dataTransfer.setDragImage(document.getElementById("dragimage"), 63,63 )
+       e.dataTransfer.dropEffect = "copy";
+       e.dataTransfer.effectAllowed = "copy";
+    
+        console.log("dragstarted");
+       
+
+    })
+    document.querySelectorAll('button').forEach(item => {
+        item.addEventListener('click', e => {
+            // console.log(e.target.className);
+            parent.postMessage({ pluginMessage: { name: e.target.className } }, '*');
+        });
+    });
+    document.addEventListener('copy', e => {
+        console.log(e);
+    })
+</script>

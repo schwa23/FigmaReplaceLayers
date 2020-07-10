@@ -1,0 +1,15 @@
+{
+  "name": "replace_layers",
+  "version": "1.0.0",
+  "description": "Replace Layers [Beta] is meant to make it",
+  "main": "code.js",
+
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.15.0"
+  }
+}
