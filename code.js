@@ -102,6 +102,8 @@ function updateThumbnail(id) {
     }
 }
 function getLargeImage() {
+    if (!!!sourceNode)
+        return;
     if (hasSize(sourceNode)) {
         let h = sourceNode.height;
         let w = sourceNode.width;
