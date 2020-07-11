@@ -1,4 +1,4 @@
-# Replace Layers
+![Replace Layers](assets/header_image.png)
 
 A Figma plugin to easily swap one layer with another. 
 
