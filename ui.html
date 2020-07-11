@@ -1,4 +1,6 @@
 <script>
+    const containerSize = 126;
+
     parent.postMessage({ pluginMessage: 'anything here' }, '*');
 
     onmessage = (event) => {
@@ -27,16 +29,8 @@
         
         preview.style.opacity= 0.7;
         preview.src = bloburl;
-        if (aspect >= 1) {
-            preview.style.height = `${(126 / aspect)}px`;
-            preview.style.marginTop = `${(100 - (100 / aspect)) / 2}`;
-            preview.style.width = "126px"
-        } else {
-            preview.style.height = "126px"
-            preview.style.width = `${(126 * aspect)}px`;
-        }
-
-
+        aspectFitElement(preview, aspect);
+        
         let dragimage = document.getElementById("dragimage")
         dragimage.style.opacity = 0.0;
         // dragimage.src = "";
@@ -65,31 +59,9 @@
             link.download = "filename";
 
         img.src = bloburl;
-
-//         let reader = new FileReader();
-//         reader.readAsDataURL(tempFile);
-//         // let bloburl = URL.createObjectURL(blob);
-//         reader.onload = function() {
-//             let dataUrl = reader.result;
-//             // dataUrl.replace('base64,', 'name=filename;base64,');
-//             img.src = dataUrl;
-//             img.download = "filename";
-//             let link = document.getElementById("previewdownload");
-//             link.href = dataUrl;
-//             link.download = "filename";
-// };        
-
+  
+        aspectFitElement(img, aspect);
        
-
-        if (aspect >= 1) {
-            img.style.height = `${(126 / aspect)}px`;
-            img.style.marginTop = `${(100 - (100 / aspect)) / 2}`;
-            img.style.width = "126px"
-        } else {
-            img.style.height = "126px"
-            img.style.width = `${(126 * aspect)}px`;
-        }
-        // console.log("large Image rendered" + Date.now());
 
         var preview = document.getElementById("thumbnailimage");
         preview.style.opacity= 0.0;
@@ -98,6 +70,20 @@
 
     }
 
+    function aspectFitElement(el, aspect){
+        if (aspect >= 1) {
+            el.style.height = `${(containerSize / aspect)}px`;
+            el.style.top = `${(containerSize - containerSize / aspect) / 2}px`;
+            el.style.left = '0px'
+            el.style.width = `${containerSize}px`
+        } else {
+            el.style.height = `${containerSize}px`
+            el.style.left = `${(1 - aspect) * containerSize / 2}px`;
+            el.style.width = `${(containerSize * aspect)}px`;
+            el.style.top= '0px'
+        }
+        return el;
+    }
     function confirmDialog(message) {
         // console.log("Running confirm Dialog");
         alert("hey");
@@ -137,6 +123,7 @@
         background-position: 50% 50%;
         transition-property: opacity;
         transition-duration: .2s;
+        position: relative;
     }
 
     #dragimage, #thumbnailimage {
@@ -144,7 +131,6 @@
         transition-property: opacity;
         transition-duration: .2s;
         position: absolute;
-        left: 12;
     } 
 
     #thumbnailimage {
@@ -168,8 +154,9 @@
 
 <script>
     document.getElementById("dragimage").addEventListener('dragstart', e => {
-       e.dataTransfer.setDragImage(document.getElementById("dragimage"), 63,63 )
-       e.dataTransfer.dropEffect = "copy";
+        let el = document.getElementById("dragimage");
+        e.dataTransfer.setDragImage(document.getElementById("previewThumbnail"), 63, 63);
+        e.dataTransfer.dropEffect = "copy";
        e.dataTransfer.effectAllowed = "copy";
 
     })
