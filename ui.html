@@ -1,7 +1,7 @@
 <script>
     const containerSize = 126;
 
-    parent.postMessage({ pluginMessage: 'anything here' }, '*');
+    // parent.postMessage({ pluginMessage: 'anything here' }, '*');
 
     onmessage = (event) => {
         //   console.log("got this from the plugin code", event.data.pluginMessage)
@@ -16,6 +16,10 @@
             confirmDialog(event.data.pluginMessage);
         }
 
+        if (event.data.pluginMessage.type === 'updateTransformCheckbox') {
+            updateTransformCheckbox(event.data.pluginMessage);
+        }
+
     }
 
     function preview(message) {
@@ -24,8 +28,7 @@
         var preview = document.getElementById("thumbnailimage");
         let blob = new Blob([imgData], { type: 'image/png'});
         let bloburl = URL.createObjectURL(blob);
-        // preview.style.backgroundImage = `url(${bloburl}`;
-        // console.log("preview rendered" + Date.now());
+
         
         preview.style.opacity= 0.7;
         preview.src = bloburl;
@@ -46,7 +49,7 @@
         
         var imgData = message.bytes;
         var aspect = message.aspect;
-        // console.log(aspect);
+
         var img = document.getElementById("dragimage");
         let blob = new Blob([imgData], { type: 'image/png' });
 
@@ -85,32 +88,49 @@
         return el;
     }
     function confirmDialog(message) {
-        // console.log("Running confirm Dialog");
-        alert("hey");
-        var confirmation =  window.confirm("Are you sure?");
-        parent.postMessage({ pluginMessage: { name: "confirmWarning", result: confirmation } }, '*');
+        var confirmation =  window.confirm(message.message);
+        parent.postMessage({ pluginMessage: confirmation}, '*');
+
+    }
+
+    function updateTransformCheckbox(message){
+        console.log("UPdating checkbox…" + message.message);
+        document.getElementById("preserveTransforms").checked = message.message
 
     }
 </script>
 
 <style>
-    .shortcuts {
+    .actions {
         width: 126px;
         display: flex;
         flex-direction: column;
     }
 
-    .shortcuts button {
+    .actions button {
         text-align: center;
         display: block;
         flex-grow: 1;
         margin-bottom: 4px;
     }
 
-    .shortcuts a:hover {
+    .actions a:hover {
         background-color: #DBDBDB
     }
 
+    .actions label {
+        text-align: left;
+        display: block;
+        flex-grow: 1;
+    }
+
+    .actions input[type=checkbox] {
+        margin-right: 6px;
+    } 
+
+    .actions>* {
+        cursor: pointer;
+    }
     #previewThumbnail {
         opacity: 1;
         text-align: center;
@@ -124,6 +144,7 @@
         transition-property: opacity;
         transition-duration: .2s;
         position: relative;
+       
     }
 
     #dragimage, #thumbnailimage {
@@ -131,6 +152,7 @@
         transition-property: opacity;
         transition-duration: .2s;
         position: absolute;
+        cursor: grab;
     } 
 
     #thumbnailimage {
@@ -145,9 +167,10 @@
 <div id="previewThumbnail" ><img draggable="true" id="dragimage" /><img draggable="false" id="thumbnailimage"/></div>
 <a id='previewdownload'></a>
 
-<p class="shortcuts">
-    <button class="setLayer">Set Source Layer</button>
-    <button class="replaceLayers">Replace Layer(s)</button>
+<p class="actions">
+    <button id="setLayer" class="action">Set Source Layer</button>
+    <button id="replaceLayers" class="replaceLayers action">Replace Layer(s)</button>
+    <label for="preserveTransforms" title="Preserve rotation and scale (scale is preserved for component instances only)."><input  class="action" type="checkbox" checked class="transforms" id="preserveTransforms">Keep Transforms</label>
 </p>
 
 
@@ -160,10 +183,10 @@
        e.dataTransfer.effectAllowed = "copy";
 
     })
-    document.querySelectorAll('button').forEach(item => {
+    document.querySelectorAll('.action').forEach(item => {
         item.addEventListener('click', e => {
-
-            parent.postMessage({ pluginMessage: { name: e.target.className } }, '*');
+            let preserveTransforms = document.getElementById("preserveTransforms").checked;
+            parent.postMessage({ pluginMessage: { name: e.target.id, preserveTransforms: preserveTransforms } }, '*');
         });
     });
    
