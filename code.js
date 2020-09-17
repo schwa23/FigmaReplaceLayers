@@ -145,7 +145,7 @@ function getLargeImage() {
 }
 function presentUI() {
     return __awaiter(this, void 0, void 0, function* () {
-        figma.showUI(__html__, { width: 150, height: 260 });
+        figma.showUI(__html__, { width: 150, height: 290 });
         updateThumbnail();
         figma.ui.show();
         yield setup();
@@ -156,6 +156,60 @@ function preserveTransforms(preserve) {
     figma.clientStorage.setAsync("preserveTransforms", preserve);
     _preserve = preserve;
 }
+function replaceFill() {
+    let lastId = figma.root.getPluginData("lastId");
+    let sourceNode = figma.getNodeById(lastId);
+    let badCount = 0;
+    console.log("Source node");
+    console.log(sourceNode);
+    if (hasFills(sourceNode)) {
+        figma.currentPage.selection.forEach(function (destNode) {
+            if (!hasFills(destNode))
+                return;
+            badCount += replaceImageFills(sourceNode, destNode);
+        });
+    }
+    if (badCount == 1) {
+        figma.notify(`Couldn't replace images on one layer because it doesn't support fills.`);
+    }
+    else if (badCount > 1) {
+        figma.notify(`Couldn't replace images on ${badCount} layers because they don't support fills.`);
+    }
+}
+function replaceImageFills(node, destinationNode) {
+    if (!hasFills(destinationNode)) {
+        return 1;
+    }
+    else {
+        const newFills = [];
+        let imageFills = [];
+        //get all the images
+        for (const paint of node.fills) {
+            if (paint.type === 'IMAGE') {
+                // Get the (encoded) bytes for this image.
+                imageFills.push(paint);
+                // TODO: Do something with the bytes!
+            }
+        }
+        //TODO: figure out a better way to avoid typescript error 
+        let destFills = destinationNode.fills;
+        if (destFills.length > 1) {
+            for (const paint of destFills) {
+                if (paint.type !== 'IMAGE') {
+                    //keep any non-image fills
+                    //push any other types of fills like gradients 
+                    imageFills.push(paint);
+                }
+            }
+        }
+        //replace the fills.
+        destinationNode.fills = imageFills;
+        return 0;
+    }
+}
+figma.on("selectionchange", () => {
+    console.log(figma.currentPage.selection);
+});
 figma.ui.onmessage = (message) => {
     // console.log("got this from the UI", message)
     console.log(message);
@@ -169,6 +223,9 @@ figma.ui.onmessage = (message) => {
         case "replaceLayers":
             replaceLayers();
             break;
+        case "replaceFill":
+            replaceFill();
+            break;
         case "preserveTransforms":
             preserveTransforms(message.preserveTransforms);
             break;
@@ -180,6 +237,20 @@ function hasSize(node) {
     return node.type ===
         "FRAME" || node.type ===
         "GROUP" || node.type ===
+        "COMPONENT" || node.type ===
+        "INSTANCE" || node.type ===
+        "BOOLEAN_OPERATION" || node.type ===
+        "VECTOR" || node.type ===
+        "STAR" || node.type ===
+        "LINE" || node.type ===
+        "ELLIPSE" || node.type ===
+        "POLYGON" || node.type ===
+        "RECTANGLE" || node.type ===
+        "TEXT";
+}
+function hasFills(node) {
+    return node.type ===
+        "FRAME" || node.type ===
         "COMPONENT" || node.type ===
         "INSTANCE" || node.type ===
         "BOOLEAN_OPERATION" || node.type ===
