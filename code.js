@@ -154,6 +154,7 @@ function preserveTransforms(preserve) {
     _preserve = preserve;
 }
 function replaceFill() {
+    console.log('replacing fill');
     let lastId = figma.root.getPluginData("lastId");
     let sourceNode = figma.getNodeById(lastId);
     let badCount = 0;

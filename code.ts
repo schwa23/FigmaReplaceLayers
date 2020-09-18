@@ -147,6 +147,7 @@ function preserveTransforms(preserve: boolean) {
 }
 
 function replaceFill() {
+  console.log('replacing fill');
   let lastId = figma.root.getPluginData("lastId");
   let sourceNode = figma.getNodeById(lastId);
   let badCount = 0;
@@ -226,6 +227,7 @@ figma.ui.onmessage = (message) => {
       replaceLayers();
       break;
     case "replaceImageFill":
+      
       replaceFill();
       break;
     case "preserveTransforms":
