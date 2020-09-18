@@ -8,7 +8,7 @@
     {"name": "Show Panel", "command": "presentUI"},
     {"name": "Set Source Layer", "command": "setLayer"},
     {"name": "Replace Layer(s)", "command": "replaceLayers"},
-    {"name": "Replace Images", "command": "replaceFill"}
+    {"name": "Replace Image(s)", "command": "replaceImageFill"}
   
   ]
 }

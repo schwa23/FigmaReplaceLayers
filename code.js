@@ -75,9 +75,9 @@ function replaceLayers() {
                     node.remove();
                 });
             });
-            console.log(sel);
+            // console.log(sel);
             figma.currentPage.selection = newSelection;
-            console.log(figma.currentPage.selection);
+            // console.log(figma.currentPage.selection);
             figma.notify(`Replaced ${count} layer(s) with ${sourceNode.name}`);
             if (!uiOpen)
                 figma.closePlugin();
@@ -107,11 +107,10 @@ function updateThumbnail(id) {
             if (hasSize(sourceNode)) {
                 let h = sourceNode.height;
                 let w = sourceNode.width;
-                let aspect = w / h;
                 let constraintType = "SCALE";
                 //send a low res preview
                 let exportBytes = yield sourceNode.exportAsync({ format: "PNG", constraint: { type: constraintType, value: .25 } });
-                figma.ui.postMessage({ type: "preview", "bytes": exportBytes, "aspect": aspect, "name": sourceNode.name });
+                figma.ui.postMessage({ type: "preview", "bytes": exportBytes, "name": sourceNode.name });
             }
         }
         else {
@@ -120,11 +119,10 @@ function updateThumbnail(id) {
             if (hasSize(sourceNode)) {
                 let h = sourceNode.height;
                 let w = sourceNode.width;
-                let aspect = w / h;
                 let constraintType = "SCALE";
                 //send a low res preview
                 let previewBytes = yield sourceNode.exportAsync({ format: "PNG", constraint: { type: constraintType, value: .25 } });
-                figma.ui.postMessage({ type: "preview", "bytes": previewBytes, "aspect": aspect, "name": sourceNode.name });
+                figma.ui.postMessage({ type: "preview", "bytes": previewBytes, "name": sourceNode.name });
             }
         }
     });
@@ -136,10 +134,9 @@ function getLargeImage() {
         if (hasSize(sourceNode)) {
             let h = sourceNode.height;
             let w = sourceNode.width;
-            let aspect = w / h;
             let constraintType = "SCALE";
             let bytes = yield sourceNode.exportAsync({ format: "PNG", constraint: { type: constraintType, value: 2 } });
-            figma.ui.postMessage({ type: "large_image", "bytes": bytes, "aspect": aspect, "name": sourceNode.name });
+            figma.ui.postMessage({ type: "large_image", "bytes": bytes, "name": sourceNode.name });
         }
     });
 }
@@ -160,8 +157,6 @@ function replaceFill() {
     let lastId = figma.root.getPluginData("lastId");
     let sourceNode = figma.getNodeById(lastId);
     let badCount = 0;
-    console.log("Source node");
-    console.log(sourceNode);
     if (hasFills(sourceNode)) {
         figma.currentPage.selection.forEach(function (destNode) {
             if (!hasFills(destNode))
@@ -181,7 +176,6 @@ function replaceImageFills(node, destinationNode) {
         return 1;
     }
     else {
-        const newFills = [];
         let imageFills = [];
         //get all the images
         for (const paint of node.fills) {
@@ -207,12 +201,15 @@ function replaceImageFills(node, destinationNode) {
         return 0;
     }
 }
+function setExternalImage(bytes) {
+    console.log('got an external image');
+}
 figma.on("selectionchange", () => {
-    console.log(figma.currentPage.selection);
+    // console.log(figma.currentPage.selection);
 });
 figma.ui.onmessage = (message) => {
     // console.log("got this from the UI", message)
-    console.log(message);
+    // console.log(message);
     switch (message.name) {
         case "getLargeImage":
             getLargeImage();
@@ -223,11 +220,14 @@ figma.ui.onmessage = (message) => {
         case "replaceLayers":
             replaceLayers();
             break;
-        case "replaceFill":
+        case "replaceImageFill":
             replaceFill();
             break;
         case "preserveTransforms":
             preserveTransforms(message.preserveTransforms);
+            break;
+        case "setExternalImage":
+            setExternalImage(message.bytes);
             break;
         default:
             break;
