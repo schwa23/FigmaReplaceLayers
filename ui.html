@@ -1,5 +1,5 @@
 <script>
-    const containerSize = 126;
+    const containerSize = 118;
 
     // parent.postMessage({ pluginMessage: 'anything here' }, '*');
 
@@ -24,29 +24,28 @@
 
     function preview(message) {
         var imgData = message.bytes;
-        var aspect = message.aspect;
         var preview = document.getElementById("thumbnailimage");
-        let blob = new Blob([imgData], { type: 'image/png'});
+        let blob = new Blob([imgData], { type: 'image/png' });
         let bloburl = URL.createObjectURL(blob);
 
-        
-        preview.style.opacity= 0.7;
+
+        preview.style.opacity = 0.7;
         preview.src = bloburl;
-        aspectFitElement(preview, aspect);
-        
+        preview.onload = function (e) { aspectFitElement(e); };
+
         let dragimage = document.getElementById("dragimage")
         dragimage.style.opacity = 0.0;
         // dragimage.src = "";
 
         // var img = document.getElementById("dragimage").src = "";
-        
-        setTimeout(function() {
-        parent.postMessage({ pluginMessage: { name: "getLargeImage" } }, '*');
+
+        setTimeout(function () {
+            parent.postMessage({ pluginMessage: { name: "getLargeImage" } }, '*');
         }, 100);
     }
 
     function draw(message) {
-        
+
         var imgData = message.bytes;
         var aspect = message.aspect;
 
@@ -57,23 +56,28 @@
         // console.log(tempFile);
         let bloburl = URL.createObjectURL(tempFile);
         // console.log(bloburl);
-        let link = document.getElementById("previewdownload");
-            link.href = bloburl;
-            link.download = "filename";
+        // let link = document.getElementById("previewdownload");
+        //     link.href = bloburl;
+        //     link.download = "filename";
 
         img.src = bloburl;
-  
-        aspectFitElement(img, aspect);
-       
+        img.onload = function (e) {
+            aspectFitElement(e)
+        }
+
 
         var preview = document.getElementById("thumbnailimage");
-        preview.style.opacity= 0.0;
+        preview.style.opacity = 0.0;
         // preview.style.backgroundImage = "";
         dragimage.style.opacity = 1.0;
 
     }
 
-    function aspectFitElement(el, aspect){
+    function aspectFitElement(e) {
+        let el = e.target;
+        let w = el.naturalWidth;
+        let h = el.naturalHeight;
+        let aspect = w / h;
         if (aspect >= 1) {
             el.style.height = `${(containerSize / aspect)}px`;
             el.style.top = `${(containerSize - containerSize / aspect) / 2}px`;
@@ -83,17 +87,17 @@
             el.style.height = `${containerSize}px`
             el.style.left = `${(1 - aspect) * containerSize / 2}px`;
             el.style.width = `${(containerSize * aspect)}px`;
-            el.style.top= '0px'
+            el.style.top = '0px'
         }
         return el;
     }
     function confirmDialog(message) {
-        var confirmation =  window.confirm(message.message);
-        parent.postMessage({ pluginMessage: confirmation}, '*');
+        var confirmation = window.confirm(message.message);
+        parent.postMessage({ pluginMessage: confirmation }, '*');
 
     }
 
-    function updateTransformCheckbox(message){
+    function updateTransformCheckbox(message) {
         console.log("UPdating checkbox…" + message.message);
         document.getElementById("preserveTransforms").checked = message.message
 
@@ -115,7 +119,7 @@
     }
 
     .actions a:hover {
-        background-color: #DBDBDB
+        background-color: #DBDBDBEE
     }
 
     .actions label {
@@ -126,34 +130,49 @@
 
     .actions input[type=checkbox] {
         margin-right: 6px;
-    } 
+    }
 
     .actions>* {
         cursor: pointer;
     }
+
+    #previewThumbnailWell {
+        padding: 6px;
+        border-radius: 3px;
+
+        background-color: rgba(0, 0, 0, .05);
+        box-shadow: inset 0px 1px 4px rgba(0, 0, 0, .1);
+    }
+
+    #previewThumbnailWell.dragenter {
+
+        outline: -webkit-focus-ring-color auto 5px
+    }
+
     #previewThumbnail {
         opacity: 1;
         text-align: center;
         overflow: hidden;
         display: block;
-        width: 126px;
-        height: 126px;
+        width: 114px;
+        height: 114px;
         background-repeat: no-repeat;
         background-size: contain;
         background-position: 50% 50%;
         transition-property: opacity;
         transition-duration: .2s;
         position: relative;
-       
+
     }
 
-    #dragimage, #thumbnailimage {
+    #dragimage,
+    #thumbnailimage {
         opacity: 0;
         transition-property: opacity;
         transition-duration: .2s;
         position: absolute;
         cursor: grab;
-    } 
+    }
 
     #thumbnailimage {
         z-index: 0;
@@ -164,32 +183,112 @@
     }
 </style>
 <link rel="stylesheet" href="https://static.figma.com/api/figma-extension-api-0.0.1.css">
-<div id="previewThumbnail" ><img draggable="true" id="dragimage" /><img draggable="false" id="thumbnailimage"/></div>
-<a id='previewdownload'></a>
+<div id="previewThumbnailWell">
+    <div id="previewThumbnail">
+        <img draggable="true" id="dragimage" />
+        <img draggable="false" id="thumbnailimage" />
+    </div>
+</div>
 
 <p class="actions">
     <button id="setLayer" class="action">Set Source Layer</button>
     <button id="replaceLayers" class="replaceLayers action">Replace Layer(s)</button>
-    <button id="replaceFill" class="replaceFill action">Replace Fill</button>
-    <label for="preserveTransforms" title="Preserve rotation and scale (scale is preserved for component instances only)."><input  class="action" type="checkbox" checked class="transforms" id="preserveTransforms">Keep Transforms</label>
-    
+    <button id="replaceFill" class="replaceFill action">Replace Image(s)</button>
+    <label for="preserveTransforms"
+        title="Preserve rotation and scale (scale is preserved for component instances only)."><input class="action"
+            type="checkbox" checked class="transforms" id="preserveTransforms">Keep Transforms</label>
+
 </p>
 
 
 
 <script>
-    document.getElementById("dragimage").addEventListener('dragstart', e => {
+    let imageWell = document.getElementById("previewThumbnailWell");
+    imageWell.addEventListener('dragstart', e => {
         let el = document.getElementById("dragimage");
-        e.dataTransfer.setDragImage(document.getElementById("previewThumbnail"), 63, 63);
+        e.dataTransfer.setDragImage(el, el.width / 2, el.height / 2);
         e.dataTransfer.dropEffect = "copy";
-       e.dataTransfer.effectAllowed = "copy";
+        e.dataTransfer.effectAllowed = "copy";
 
     })
+    imageWell.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        imageWell.className = "dragenter";
+    });
+
+    window.addEventListener("blur", function (e) {
+        imageWell.className = "";
+    })
+
+    window.addEventListener('paste', function (ev) {
+        var clipboardData = ev.clipboardData;
+        ev.preventDefault();
+
+        var item = ev.clipboardData.items[0];
+        for (let index = 0; index < ev.clipboardData.items.length; index++) {
+            const item = ev.clipboardData.items[index];
+            if (item.type.indexOf("image") === 0) {
+                var blob = item.getAsFile();
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var arrayBuffer = this.result,
+                        array = new Uint8Array(arrayBuffer);
+                        draw({ bytes: arrayBuffer, type: "large_image" });
+                        parent.postMessage({ pluginMessage: { name: "setExternalImage", bytes: array } }, '*');
+                };
+
+                reader.readAsArrayBuffer(blob);
+            }
+        }
+
+    });
+
+
+    imageWell.addEventListener('drop', async e => {
+        e.preventDefault();
+        if (e.dataTransfer.items) {
+            // Use DataTransferItemList interface to access the file(s)
+
+            //TODO: Support multiple files
+            for (var i = 0; i < e.dataTransfer.items.length; i++) {
+                // If dropped items aren't files, reject them
+                if (e.dataTransfer.items[i].kind === 'file') {
+                    var file = e.dataTransfer.items[i].getAsFile();
+                    // console.log('... file[' + i + '].name = ' + file.name);
+                    var reader = new FileReader();
+
+
+                    reader.onload = function () {
+
+                        var arrayBuffer = this.result,
+                            array = new Uint8Array(arrayBuffer);
+                        draw({ bytes: arrayBuffer, type: "large_image" });
+                        parent.postMessage({ pluginMessage: { name: "setExternalImage", bytes: array } }, '*');
+
+                        imageWell.className = "";
+                        
+
+                    }
+                    reader.readAsArrayBuffer(file);
+
+                }
+            }
+        } else {
+            // Use DataTransfer interface to access the file(s)
+            for (var i = 0; i < e.dataTransfer.files.length; i++) {
+                // console.log('X... file[' + i + '].name = ' + e.dataTransfer.files[i].name);
+            }
+        }
+    }
+
+    )
+
+
     document.querySelectorAll('.action').forEach(item => {
         item.addEventListener('click', e => {
             let preserveTransforms = document.getElementById("preserveTransforms").checked;
             parent.postMessage({ pluginMessage: { name: e.target.id, preserveTransforms: preserveTransforms } }, '*');
         });
     });
-   
+
 </script>
