@@ -1,5 +1,5 @@
 <script>
-    const containerSize = 118;
+    const containerSize = 114;
 
     // parent.postMessage({ pluginMessage: 'anything here' }, '*');
 
@@ -31,7 +31,7 @@
 
         preview.style.opacity = 0.7;
         preview.src = bloburl;
-        preview.onload = function (e) { aspectFitElement(e); };
+        preview.onload = function (e) { aspectFitElement(e.target); };
 
         let dragimage = document.getElementById("dragimage")
         dragimage.style.opacity = 0.0;
@@ -41,7 +41,7 @@
 
         setTimeout(function () {
             parent.postMessage({ pluginMessage: { name: "getLargeImage" } }, '*');
-        }, 100);
+        }, 50);
     }
 
     function draw(message) {
@@ -62,7 +62,7 @@
 
         img.src = bloburl;
         img.onload = function (e) {
-            aspectFitElement(e)
+            aspectFitElement(e.target)
         }
 
 
@@ -73,8 +73,8 @@
 
     }
 
-    function aspectFitElement(e) {
-        let el = e.target;
+    function aspectFitElement(el) {
+
         let w = el.naturalWidth;
         let h = el.naturalHeight;
         let aspect = w / h;
@@ -144,8 +144,8 @@
         box-shadow: inset 0px 1px 4px rgba(0, 0, 0, .1);
     }
 
-    #previewThumbnailWell.dragenter {
-
+    #previewThumbnailWell.focus {
+        outline-color: darkturquoise;
         outline: -webkit-focus-ring-color auto 5px
     }
 
@@ -214,7 +214,7 @@
     })
     imageWell.addEventListener("dragover", function (e) {
         e.preventDefault();
-        imageWell.className = "dragenter";
+        imageWell.className = "focus";
     });
 
     window.addEventListener("blur", function (e) {
@@ -234,16 +234,26 @@
                 reader.onload = function () {
                     var arrayBuffer = this.result,
                         array = new Uint8Array(arrayBuffer);
-                        draw({ bytes: arrayBuffer, type: "large_image" });
-                        parent.postMessage({ pluginMessage: { name: "setExternalImage", bytes: array } }, '*');
+                    draw({ bytes: arrayBuffer, type: "large_image" });
+                    parent.postMessage({ pluginMessage: { name: "setExternalImage", filename: blob.name, bytes: array } }, '*');
                 };
 
                 reader.readAsArrayBuffer(blob);
+            } else {
+                debugger;
+                //this will detect the paste event and assume that the selected layer is the one you were trying to copy-paste.
+                parent.postMessage({ pluginMessage: { name: "setLayer" } }, '*');
+                ev.clipboardData.items[0].getAsString(function (s) {
+
+                })
             }
         }
 
     });
 
+    imageWell.addEventListener('click', function (e) {
+        imageWell.className = "focus";
+    });
 
     imageWell.addEventListener('drop', async e => {
         e.preventDefault();
@@ -253,22 +263,16 @@
             //TODO: Support multiple files
             for (var i = 0; i < e.dataTransfer.items.length; i++) {
                 // If dropped items aren't files, reject them
-                if (e.dataTransfer.items[i].kind === 'file') {
-                    var file = e.dataTransfer.items[i].getAsFile();
-                    // console.log('... file[' + i + '].name = ' + file.name);
+                let item = e.dataTransfer.items[i];
+                if (item.kind === 'file') {
+                    var file = item.getAsFile();
                     var reader = new FileReader();
-
-
                     reader.onload = function () {
-
                         var arrayBuffer = this.result,
                             array = new Uint8Array(arrayBuffer);
                         draw({ bytes: arrayBuffer, type: "large_image" });
-                        parent.postMessage({ pluginMessage: { name: "setExternalImage", bytes: array } }, '*');
-
+                        parent.postMessage({ pluginMessage: { name: "setExternalImage", filename: file.name, bytes: array } }, '*');
                         imageWell.className = "";
-                        
-
                     }
                     reader.readAsArrayBuffer(file);
 
@@ -277,7 +281,7 @@
         } else {
             // Use DataTransfer interface to access the file(s)
             for (var i = 0; i < e.dataTransfer.files.length; i++) {
-                // console.log('X... file[' + i + '].name = ' + e.dataTransfer.files[i].name);
+
             }
         }
     }

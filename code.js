@@ -10,9 +10,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 let uiOpen = false;
 let sourceNode = null;
 let _preserve = true;
+let didSetup = false;
+let _externalImage;
 function setup() {
     return __awaiter(this, void 0, void 0, function* () {
-        _preserve = yield figma.clientStorage.getAsync("preserveTransforms");
+        if (!didSetup) {
+            _preserve = yield figma.clientStorage.getAsync("preserveTransforms");
+            didSetup = true;
+        }
     });
 }
 function setLayer() {
@@ -35,24 +40,30 @@ function replaceLayers() {
         setup();
         let root = figma.root;
         let sel = figma.currentPage.selection;
+        const count = sel.length;
         let newSelection = [];
         let lastId = root.getPluginData("lastId");
-        sourceNode = figma.getNodeById(lastId);
+        if (lastId == "_EXTERNAL_IMAGE_") {
+            sourceNode = figma.createRectangle();
+            replaceImageFills(null, sourceNode, _externalImage);
+            sourceNode.name = _externalImage.filename;
+        }
+        else {
+            sourceNode = figma.getNodeById(lastId);
+        }
         if (sourceNode) {
             let newNode;
-            const count = sel.length;
             sel.map(function (node, index) {
                 return __awaiter(this, void 0, void 0, function* () {
                     let scale = 1;
                     if (node.type == "COMPONENT") {
-                        //TODO: Handle main components better
                         let confirmWarning = yield showConfirmDialog("Are you sure you want to replace a main component?");
                         if (confirmWarning === false)
                             return;
                     }
                     if (node.type === "INSTANCE") {
-                        //infer the scale from the instance's master
-                        scale = getScaleFromInstance(node);
+                        //grab the scale from the instance's master
+                        scale = node.scaleFactor;
                     }
                     if (sourceNode.type != "COMPONENT" && sourceNode.type != "DOCUMENT") {
                         newNode = sourceNode.clone();
@@ -89,14 +100,6 @@ function replaceLayers() {
         }
     });
 }
-function getScaleFromInstance(node) {
-    let main = node.mainComponent;
-    let mainHeight = main.height;
-    let mainWidth = main.width;
-    let height = node.height;
-    let width = node.width;
-    return Math.max(height / mainHeight, width / mainWidth);
-}
 function updateThumbnail(id) {
     return __awaiter(this, void 0, void 0, function* () {
         let root = figma.root;
@@ -116,7 +119,7 @@ function updateThumbnail(id) {
         else {
             let lastId = root.getPluginData("lastId");
             sourceNode = figma.getNodeById(lastId);
-            if (hasSize(sourceNode)) {
+            if (sourceNode && hasSize(sourceNode)) {
                 let h = sourceNode.height;
                 let w = sourceNode.width;
                 let constraintType = "SCALE";
@@ -156,14 +159,23 @@ function preserveTransforms(preserve) {
 function replaceFill() {
     console.log('replacing fill');
     let lastId = figma.root.getPluginData("lastId");
-    let sourceNode = figma.getNodeById(lastId);
     let badCount = 0;
-    if (hasFills(sourceNode)) {
+    if (lastId == "_EXTERNAL_IMAGE_") {
         figma.currentPage.selection.forEach(function (destNode) {
             if (!hasFills(destNode))
                 return;
-            badCount += replaceImageFills(sourceNode, destNode);
+            badCount += replaceImageFills(null, destNode, _externalImage);
         });
+    }
+    else {
+        let sourceNode = figma.getNodeById(lastId);
+        if (hasFills(sourceNode)) {
+            figma.currentPage.selection.forEach(function (destNode) {
+                if (!hasFills(destNode))
+                    return;
+                badCount += replaceImageFills(sourceNode, destNode);
+            });
+        }
     }
     if (badCount == 1) {
         figma.notify(`Couldn't replace images on one layer because it doesn't support fills.`);
@@ -172,18 +184,28 @@ function replaceFill() {
         figma.notify(`Couldn't replace images on ${badCount} layers because they don't support fills.`);
     }
 }
-function replaceImageFills(node, destinationNode) {
-    if (!hasFills(destinationNode)) {
-        return 1;
+function replaceImageFills(node, destinationNode, imageObject) {
+    let imageFills = [];
+    let imageBytes = imageObject ? imageObject.bytes : null;
+    if (imageBytes) {
+        let newPaint = {
+            type: "IMAGE",
+            scaleMode: "FILL",
+            imageHash: figma.createImage(imageBytes).hash
+        };
+        console.log(newPaint);
+        imageFills.push(newPaint);
     }
     else {
-        let imageFills = [];
-        //get all the images
-        for (const paint of node.fills) {
-            if (paint.type === 'IMAGE') {
-                // Get the (encoded) bytes for this image.
-                imageFills.push(paint);
-                // TODO: Do something with the bytes!
+        if (!hasFills(destinationNode)) {
+            return 1;
+        }
+        else {
+            //get all the images
+            for (const paint of node.fills) {
+                if (paint.type === 'IMAGE') {
+                    imageFills.push(paint);
+                }
             }
         }
         //TODO: figure out a better way to avoid typescript error 
@@ -197,13 +219,15 @@ function replaceImageFills(node, destinationNode) {
                 }
             }
         }
-        //replace the fills.
-        destinationNode.fills = imageFills;
-        return 0;
     }
+    //replace the fills.
+    destinationNode.fills = imageFills;
+    return 0;
 }
-function setExternalImage(bytes) {
+function setExternalImage(message) {
     console.log('got an external image');
+    _externalImage = message;
+    figma.root.setPluginData("lastId", "_EXTERNAL_IMAGE_");
 }
 figma.on("selectionchange", () => {
     // console.log(figma.currentPage.selection);
@@ -228,7 +252,7 @@ figma.ui.onmessage = (message) => {
             preserveTransforms(message.preserveTransforms);
             break;
         case "setExternalImage":
-            setExternalImage(message.bytes);
+            setExternalImage(message);
             break;
         default:
             break;
