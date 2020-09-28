@@ -29,21 +29,24 @@ async function replaceLayers() {
   setup();
   let root = figma.root;
   let sel = figma.currentPage.selection;
+  let hasSourceNode = true;
   const count = sel.length;
 
   let newSelection = [];
   let lastId = root.getPluginData("lastId");
-  if ( lastId == "_EXTERNAL_IMAGE_"){ 
+  if (lastId == "_EXTERNAL_IMAGE_") {
+    hasSourceNode = false;
     sourceNode = figma.createRectangle();
     replaceImageFills(null, sourceNode, _externalImage);
     sourceNode.name = _externalImage.filename;
     
+
   } else {
     sourceNode = figma.getNodeById(lastId);
   }
   if (sourceNode) {
     let newNode: SceneNode;
-   
+
     sel.map(async function (node, index) {
       let scale = 1;
       if (node.type == "COMPONENT") {
@@ -71,6 +74,13 @@ async function replaceLayers() {
         newNode.rotation = node.rotation;
         newNode.rescale(scale);
       }
+     if(!hasSourceNode) {
+       //we're replacing a layer with the image 
+       //dragged in or from the clipboard.
+       //use the destination layer's size 
+       console.log("Doesn't have a source node")
+       newNode.resize(node.width, node.height);
+     }
       newNode.layoutAlign = node.layoutAlign;
       newSelection.push(newNode);
       node.remove();
@@ -81,7 +91,7 @@ async function replaceLayers() {
     // console.log(figma.currentPage.selection);
     figma.notify(`Replaced ${count} layer(s) with ${sourceNode.name}`);
     if (!uiOpen) figma.closePlugin();
-  }  else {
+  } else {
     figma.notify("⚠️ Couldn't replace layers.\nThe source layer must exist in this document.");
     if (!uiOpen) figma.closePlugin();
   }
@@ -97,16 +107,16 @@ async function updateThumbnail(id?: string) {
       let h = sourceNode.height;
       let w = sourceNode.width;
 
-      let constraintType: "HEIGHT" | "WIDTH" | "SCALE" = "SCALE";
+      let constraintType: "HEIGHT" | "WIDTH" | "SCALE" = h > w ? "HEIGHT" : "WIDTH";
       //send a low res preview
-      let exportBytes = await sourceNode.exportAsync({ format: "PNG", constraint: { type: constraintType, value: .25 } });
+      let exportBytes = await sourceNode.exportAsync({ format: "PNG", constraint: { type: constraintType, value: 114 } });
       figma.ui.postMessage({ type: "preview", "bytes": exportBytes, "name": sourceNode.name });
     }
   } else {
 
     let lastId = root.getPluginData("lastId");
     sourceNode = figma.getNodeById(lastId);
-    
+
     if (sourceNode && hasSize(sourceNode)) {
       let h = sourceNode.height;
       let w = sourceNode.width;
@@ -128,6 +138,7 @@ async function getLargeImage() {
     let w = sourceNode.width;
     let constraintType: "HEIGHT" | "WIDTH" | "SCALE" = "SCALE";
     let bytes = await sourceNode.exportAsync({ format: "PNG", constraint: { type: constraintType, value: 2 } });
+    _externalImage = { bytes: bytes, name: sourceNode.name };
     figma.ui.postMessage({ type: "large_image", "bytes": bytes, "name": sourceNode.name });
   }
 }
@@ -162,13 +173,14 @@ function replaceFill() {
     let sourceNode = figma.getNodeById(lastId);
 
     if (hasFills(sourceNode)) {
-
       figma.currentPage.selection.forEach(function (destNode: BaseNode) {
-        if (!hasFills(destNode))
-          return;
-        badCount += replaceImageFills(sourceNode, destNode);
+        if (!hasFills(destNode)) {
+          badCount += 1;
+        } else {
+          badCount += replaceImageFills(sourceNode, destNode, _externalImage);
+        }
       });
-    }
+    } 
 
   }
 
@@ -184,18 +196,24 @@ function replaceFill() {
 function replaceImageFills(node, destinationNode, imageObject?) {
   let imageFills = [];
   let imageBytes = imageObject ? imageObject.bytes : null;
+  let newPaint;
   if (imageBytes) {
-    let newPaint = {
+    newPaint = {
       type: "IMAGE",
       scaleMode: "FILL",
       imageHash: figma.createImage(imageBytes).hash
     }
-    console.log(newPaint);
+  }
+
+  // if we only have image bytes, go ahead and set the fills to the image
+  if (node === null && imageBytes) {
     imageFills.push(newPaint as ImagePaint)
+
   } else {
     if (!hasFills(destinationNode)) {
-      return 1;
-    } else {
+      //can't set a paint on a layer that can't be filled
+      return 1; 
+    } else if(node.fills.length > 0) {
       //get all the images
       for (const paint of node.fills) {
         if (paint.type === 'IMAGE') {
@@ -204,10 +222,17 @@ function replaceImageFills(node, destinationNode, imageObject?) {
       }
 
     }
+    if (imageFills.length === 0 && newPaint) {
+      //if the source node has no fills, and we passed imagebytes, then use the image
+      // as the fill
+      imageFills.push(newPaint)
+    }
 
+    //here's where set the fills on the source layer
     //TODO: figure out a better way to avoid typescript error 
     let destFills: any[] = <any>destinationNode.fills;
-    if (destFills.length > 1) {
+    
+    if (destFills.length > 0) {
       for (const paint of destFills) {
         if (paint.type !== 'IMAGE') {
           //keep any non-image fills
@@ -217,11 +242,10 @@ function replaceImageFills(node, destinationNode, imageObject?) {
       }
     }
 
-    
   }
   //replace the fills.
-    destinationNode.fills = imageFills
-    return 0;
+  destinationNode.fills = imageFills
+  return 0;
 }
 
 function setExternalImage(message) {
@@ -230,6 +254,11 @@ function setExternalImage(message) {
 
   figma.root.setPluginData("lastId", "_EXTERNAL_IMAGE_");
 
+}
+
+function copyImage() {
+  debugger;
+  // navigator.clipboard.writeText("foo")
 }
 
 figma.on("selectionchange", () => {
