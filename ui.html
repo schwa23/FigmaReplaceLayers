@@ -1,6 +1,7 @@
 <script>
     const containerSize = 114;
-
+    let selectedFilename = 'draggedFile';
+    let isCopying = false;
     // parent.postMessage({ pluginMessage: 'anything here' }, '*');
 
     onmessage = (event) => {
@@ -35,9 +36,9 @@
 
         let dragimage = document.getElementById("dragimage")
         dragimage.style.opacity = 0.0;
-        // dragimage.src = "";
+        dragimage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 
-        // var img = document.getElementById("dragimage").src = "";
+        let hint = document.querySelector("#previewThumbnailWell p.hint").style.display = "none";
 
         setTimeout(function () {
             parent.postMessage({ pluginMessage: { name: "getLargeImage" } }, '*');
@@ -48,47 +49,89 @@
 
         var imgData = message.bytes;
         var aspect = message.aspect;
-
+        window._lastBytes = imgData;
+        if (message.name) {
+            window.selectedFilename = message.name;
+        }
         var img = document.getElementById("dragimage");
         let blob = new Blob([imgData], { type: 'image/png' });
+        let base64Data = btoa(new Uint8Array(imgData).reduce(function (data, byte) {
+            return data + String.fromCharCode(byte);
+        }, ''));
 
-        let tempFile = new File([imgData], "image.png", { type: 'image/png' });
-        // console.log(tempFile);
-        let bloburl = URL.createObjectURL(tempFile);
-        // console.log(bloburl);
-        // let link = document.getElementById("previewdownload");
-        //     link.href = bloburl;
-        //     link.download = "filename";
+        let url = 'data:image/png;base64,' + base64Data;
 
-        img.src = bloburl;
+        // let tempFile = new File([imgData], "image.png", { type: 'image/png' });
+        // let bloburl = URL.createObjectURL(tempFile);
+
+        img.src = url;
+        img.download = "file";
         img.onload = function (e) {
             aspectFitElement(e.target)
         }
+
+        let hint = document.querySelector("#previewThumbnailWell p.hint").style.display = "none";
 
 
         var preview = document.getElementById("thumbnailimage");
         preview.style.opacity = 0.0;
         // preview.style.backgroundImage = "";
-        dragimage.style.opacity = 1.0;
+        img.style.opacity = 1.0;
 
     }
+
+    function copyImage() {
+
+        if (!isCopying) {
+            isCopying = true;
+            console.log("copying image");
+            let image = document.getElementById("dragwrapper");
+            image.contentEditable = true;
+            selectText(document.getElementById('dragwrapper'));
+            document.execCommand('copy');
+            //Unselect the content
+            window.getSelection().removeAllRanges();
+            parent.postMessage({ pluginMessage: { type: 'clipboardCopySuccess' } }, '*')
+            //Make the container Div uneditable again
+            image.contentEditable = false;
+        } else {
+            isCopying = false;
+        }
+    }
+
+    function selectText(element) {
+        var doc = document;
+        if (doc.body.createTextRange) {
+            var range = document.body.createTextRange();
+            range.moveToElementText(element);
+            range.select();
+        } else if (window.getSelection) {
+            var selection = window.getSelection();
+            var range = document.createRange();
+            range.selectNodeContents(element);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+        return selection;
+    }
+
 
     function aspectFitElement(el) {
 
         let w = el.naturalWidth;
         let h = el.naturalHeight;
         let aspect = w / h;
-        if (aspect >= 1) {
-            el.style.height = `${(containerSize / aspect)}px`;
-            el.style.top = `${(containerSize - containerSize / aspect) / 2}px`;
-            el.style.left = '0px'
-            el.style.width = `${containerSize}px`
-        } else {
-            el.style.height = `${containerSize}px`
-            el.style.left = `${(1 - aspect) * containerSize / 2}px`;
-            el.style.width = `${(containerSize * aspect)}px`;
-            el.style.top = '0px'
-        }
+
+        [el, el.parentElement].forEach(element => {
+            if (aspect >= 1) {
+                element.style.height = `${(containerSize / aspect)}px`;
+                element.style.width = `${containerSize}px`
+            } else {
+                element.style.height = `${containerSize}px`
+                element.style.width = `${(containerSize * aspect)}px`;
+            }
+        });
+
         return el;
     }
     function confirmDialog(message) {
@@ -98,13 +141,18 @@
     }
 
     function updateTransformCheckbox(message) {
-        console.log("UPdating checkbox…" + message.message);
+        // console.log("UPdating checkbox…" + message.message);
         document.getElementById("preserveTransforms").checked = message.message
 
     }
 </script>
 
 <style>
+    .wrapper {
+        position: absolute;
+        display: inline;
+    }
+
     .actions {
         width: 126px;
         display: flex;
@@ -137,31 +185,42 @@
     }
 
     #previewThumbnailWell {
-        padding: 6px;
-        border-radius: 3px;
 
+        border-radius: 3px;
         background-color: rgba(0, 0, 0, .05);
-        box-shadow: inset 0px 1px 4px rgba(0, 0, 0, .1);
+        box-shadow: inset 0px 1px 4px rgba(0, 0, 0, .1), 0px 0px 8px rgba(0, 0, 0, .1);
+        border: 1px rgba(255, 255, 255, 1.0) solid;
+        position: relative;
+        width: 124px;
+        height: 124px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
+
+    /* #previewThumbnailWell {
+        outline-color: white;
+        outline-offset: 0px;
+        outline-width: 6px;
+        outline-style: solid;
+
+    } */
 
     #previewThumbnailWell.focus {
         outline-color: darkturquoise;
-        outline: -webkit-focus-ring-color auto 5px
+        outline-offset: -3px;
+        outline: -webkit-focus-ring-color auto 6px;
     }
 
     #previewThumbnail {
         opacity: 1;
-        text-align: center;
         overflow: hidden;
-        display: block;
         width: 114px;
         height: 114px;
-        background-repeat: no-repeat;
-        background-size: contain;
-        background-position: 50% 50%;
-        transition-property: opacity;
-        transition-duration: .2s;
-        position: relative;
+        /* border: 1px solid red; */
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
     }
 
@@ -181,12 +240,21 @@
     #dragimage {
         z-index: 1;
     }
+
+    #previewThumbnailWell p.hint {
+        color: rgb(188, 188, 188);
+        text-align: center;
+        font-weight: 600;
+        font-size: 1.1em;
+    }
 </style>
 <link rel="stylesheet" href="https://static.figma.com/api/figma-extension-api-0.0.1.css">
 <div id="previewThumbnailWell">
     <div id="previewThumbnail">
-        <img draggable="true" id="dragimage" />
-        <img draggable="false" id="thumbnailimage" />
+        <div class='wrapper' id="dragwrapper" oncontextmenu="return true"><img draggable="true" id="dragimage" /></div>
+        <div class='wrapper' id="dragwrapper"> <img draggable="false" id="thumbnailimage" /></div>
+
+        <p class="hint">Set Source Layer or Drag Image Here</p>
     </div>
 </div>
 
@@ -204,12 +272,18 @@
 
 
 <script>
+
     let imageWell = document.getElementById("previewThumbnailWell");
     imageWell.addEventListener('dragstart', e => {
         let el = document.getElementById("dragimage");
         e.dataTransfer.setDragImage(el, el.width / 2, el.height / 2);
         e.dataTransfer.dropEffect = "copy";
         e.dataTransfer.effectAllowed = "copy";
+        // e.dataTransfer.setData('image/png', 'image/png:filename.png:' + el.src);
+        // e.dataTransfer.setData('text/html', document.getElementById('dragwrapper').innerHTML);
+        // e.dataTransfer.setData('application/x-moz-file', window._lastBytes);
+        let filename = window.selectedFilename.endsWith('.png') ? window.selectedFilename : window.selectedFilename + ".png";
+        e.dataTransfer.setData("DownloadURL", 'image/png:' + filename + ':' + el.src);
 
     })
     imageWell.addEventListener("dragover", function (e) {
@@ -217,34 +291,48 @@
         imageWell.className = "focus";
     });
 
+
     window.addEventListener("blur", function (e) {
         imageWell.className = "";
     })
 
-    window.addEventListener('paste', function (ev) {
-        var clipboardData = ev.clipboardData;
-        ev.preventDefault();
+    window.addEventListener('copy', function (e) {
+        // if (imageWell.className == "focus") {
+        // copyImage();
+        // e.clipboardData.setData('image/png', document.getElementById("dragimage").src);
+        e.preventDefault();
+        // let selection = selectText(document.getElementById('dragwrapper'));
+        e.clipboardData.setData('text/html', document.getElementById('dragwrapper').innerHTML);
+        // e.clipboardData.setData("URL",  document.getElementById("dragimage").src);
 
-        var item = ev.clipboardData.items[0];
-        for (let index = 0; index < ev.clipboardData.items.length; index++) {
-            const item = ev.clipboardData.items[index];
+        // }
+    });
+
+    window.addEventListener('paste', function (e) {
+        var clipboardData = e.clipboardData;
+        e.preventDefault();
+
+        var item = e.clipboardData.items[0];
+        for (let index = 0; index < e.clipboardData.items.length; index++) {
+            const item = e.clipboardData.items[index];
             if (item.type.indexOf("image") === 0) {
                 var blob = item.getAsFile();
+                window.selectedFilename = blob.name;
                 var reader = new FileReader();
                 reader.onload = function () {
                     var arrayBuffer = this.result,
                         array = new Uint8Array(arrayBuffer);
                     draw({ bytes: arrayBuffer, type: "large_image" });
-                    parent.postMessage({ pluginMessage: { name: "setExternalImage", filename: blob.name, bytes: array } }, '*');
+                    parent.postMessage({ pluginMessage: { name: "setExternalImage", filename: window.selectedFilename, bytes: array } }, '*');
                 };
 
                 reader.readAsArrayBuffer(blob);
             } else {
-                debugger;
                 //this will detect the paste event and assume that the selected layer is the one you were trying to copy-paste.
                 parent.postMessage({ pluginMessage: { name: "setLayer" } }, '*');
-                ev.clipboardData.items[0].getAsString(function (s) {
-
+                e.clipboardData.items[0].getAsString(function (s) {
+                    console.log("Pasted data: ")
+                    console.log(s);
                 })
             }
         }
@@ -253,6 +341,7 @@
 
     imageWell.addEventListener('click', function (e) {
         imageWell.className = "focus";
+        selectText(imageWell);
     });
 
     imageWell.addEventListener('drop', async e => {
@@ -266,10 +355,13 @@
                 let item = e.dataTransfer.items[i];
                 if (item.kind === 'file') {
                     var file = item.getAsFile();
+                    console.log(file.name);
+                    window.selectedFilename = file.name;
                     var reader = new FileReader();
                     reader.onload = function () {
                         var arrayBuffer = this.result,
                             array = new Uint8Array(arrayBuffer);
+
                         draw({ bytes: arrayBuffer, type: "large_image" });
                         parent.postMessage({ pluginMessage: { name: "setExternalImage", filename: file.name, bytes: array } }, '*');
                         imageWell.className = "";

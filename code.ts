@@ -257,7 +257,7 @@ function setExternalImage(message) {
 }
 
 function copyImage() {
-  debugger;
+  // debugger;
   // navigator.clipboard.writeText("foo")
 }
 
@@ -271,6 +271,9 @@ figma.ui.onmessage = (message) => {
 
 
   switch (message.name) {
+    case "copyImage":
+      copyImage();
+      break;
     case "getLargeImage":
       getLargeImage();
       break;

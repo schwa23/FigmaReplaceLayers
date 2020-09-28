@@ -252,6 +252,10 @@ function setExternalImage(message) {
     _externalImage = message;
     figma.root.setPluginData("lastId", "_EXTERNAL_IMAGE_");
 }
+function copyImage() {
+    // debugger;
+    // navigator.clipboard.writeText("foo")
+}
 figma.on("selectionchange", () => {
     // console.log(figma.currentPage.selection);
 });
@@ -259,6 +263,9 @@ figma.ui.onmessage = (message) => {
     // console.log("got this from the UI", message)
     // console.log(message);
     switch (message.name) {
+        case "copyImage":
+            copyImage();
+            break;
         case "getLargeImage":
             getLargeImage();
             break;
